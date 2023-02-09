@@ -29,7 +29,7 @@ jobs:
     needs: [build-api-project]
     defaults:
       run:
-        working-directory: './BlueGreenDeployments/src/WeatherApi/WeatherApi'
+        working-directory: './BlueGreenDeployments/src/WeatherApi'
     steps:
       - name: 'Checkout GitHub Action'
         uses: actions/checkout@main
