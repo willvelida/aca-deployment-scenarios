@@ -30,10 +30,15 @@ param minReplica int = 1
 param maxReplica int = 30
 
 var acrPullRole = resourceId('Microsoft.Authorization/roleDefinitions', '7f951dda-4ed3-4680-a7ca-43fe172d538d')
+var tags = {
+  DeploymentScenario: 'BlueGreen'
+  Owner: 'Will Velida'
+}
 
 resource containerRegistry 'Microsoft.ContainerRegistry/registries@2023-01-01-preview' = {
   name: containerRegistryName
   location: location
+  tags: tags
   sku: {
     name: 'Standard'
   }
@@ -47,6 +52,7 @@ resource containerRegistry 'Microsoft.ContainerRegistry/registries@2023-01-01-pr
 
 resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
   name: logAnalyticsWorkspaceName
+  tags: tags
   location: location
   properties: {
     sku: {
@@ -58,6 +64,7 @@ resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
 resource containerAppEnv 'Microsoft.App/managedEnvironments@2022-10-01' = {
   name: containerAppEnvName
   location: location
+  tags: tags
   sku: {
     name: 'Consumption'
   }
@@ -85,6 +92,7 @@ resource acrPullRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-
 resource containerApp 'Microsoft.App/containerApps@2022-10-01' = {
   name: containerAppName
   location: location
+  tags: tags
   properties: {
     managedEnvironmentId: containerAppEnv.id
     configuration: {
