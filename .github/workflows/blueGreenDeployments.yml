@@ -99,3 +99,39 @@ jobs:
             echo "Creating Blue Slot"
             az containerapp revision copy -n weather-api -g ${{ secrets.AZURE_RG }} -i ${{ steps.getacrserver.outputs.loginServer }}/weatherapi:${{ github.sha }}
             az containerapp ingress traffic set -n weather-api -g ${{ secrets.AZURE_RG }} --revision-weight ${{ steps.getcurrentrevisionname.outputs.currentRevision }}=100
+
+  promote-to-green:
+    runs-on: ubuntu-latest
+    needs: [deploy-to-blue]
+    environment: Production
+    steps:
+      - name: 'Checkout GitHub Action'
+        uses: actions/checkout@main
+
+      - name: 'Login via Azure CLI'
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+        
+      - name: Get ACR Login Server
+        id: getacrserver
+        run: |
+          loginServer=$(az acr list --resource-group ${{ secrets.AZURE_RG }} --query "[0].loginServer" -o tsv)
+          echo "::set-output name=loginServer::$loginServer"
+
+      - name: Get blue slot
+        id: getblueslot
+        run: |
+          az extension add -n containerapp --yes
+          blueSlot=$(az containerapp revision list -g ${{ secrets.AZURE_RG }} -n weather-api --query 'reverse(sort_by([].{Revision:name,Replicas:properties.replicas,Active:properties.active,Created:properties.createdTime,FQDN:properties.fqdn}[?Active!=`false`], &Created))| [0].Revision' -o tsv)
+          echo "::set-output name=blueSlot::$blueSlot"
+
+      - name: Promote blue to green slot
+        uses: Azure/cli@v1
+        with:
+          inlineScript: |
+            echo "Installing containerapp extension"
+            az extension add -n containerapp --yes
+            echo "Promoting Blue Slot to Green Slot"
+            az containerapp ingress traffic set -n weather-api -g ${{ secrets.AZURE_RG }} --revision-weight ${{ steps.getblueslot.outputs.blueSlot }}=100
+        
