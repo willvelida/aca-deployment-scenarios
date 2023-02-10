@@ -65,9 +65,9 @@ jobs:
           docker build . -t ${{ steps.getacrcreds.outputs.loginServer }}/weatherapi:${{ github.sha }}
           docker push ${{ steps.getacrcreds.outputs.loginServer }}/weatherapi:${{ github.sha }}
 
-  deploy-api-image:
+  deploy-to-blue:
     runs-on: ubuntu-latest
-    needs: build-container-image
+    needs: [deploy-api-image]
     steps:
       - name: 'Checkout GitHub Action'
         uses: actions/checkout@main
@@ -83,12 +83,11 @@ jobs:
           loginServer=$(az acr list --resource-group ${{ secrets.AZURE_RG }} --query "[0].loginServer" -o tsv)
           echo "::set-output name=loginServer::$loginServer"
 
-      - name: 'Deploy Container App'
+      - name: 'Deploy to Blue Slot'
         uses: Azure/cli@v1
         with:
           inlineScript: |
             echo "Installing containerapp extension"
             az extension add -n containerapp --yes
-            echo "Starting Deploying"
-            az containerapp update -n weather-api -g ${{ secrets.AZURE_RG }} -i ${{ steps.getacrserver.outputs.loginServer }}/weatherapi:${{ github.sha }}
-
+            echo "Creating Blue Slot"
+            az containerapp revision copy -n weather-api -g ${{ secrets.AZURE_RG }} -i ${{ steps.getacrserver.outputs.loginServer }}/weatherapi:${{ github.sha }}
