@@ -83,6 +83,12 @@ jobs:
           loginServer=$(az acr list --resource-group ${{ secrets.AZURE_RG }} --query "[0].loginServer" -o tsv)
           echo "::set-output name=loginServer::$loginServer"
 
+      - name: Get current revision name
+        id: getcurrentrevisionname
+        run: |
+          currentRevision=$(az containerapp revision list -g ${{ secrets.AZURE_RG }} -n weather-api --query 'reverse(sort_by([].{Revision:name,Replicas:properties.replicas,Active:properties.active,Created:properties.createdTime,FQDN:properties.fqdn}[?Active!=`false`], &Created))| [0].Revision' -o tsv)
+          echo "::set-output name=currentRevision::$currentRevision"
+
       - name: 'Deploy to Blue Slot'
         uses: Azure/cli@v1
         with:
@@ -91,3 +97,4 @@ jobs:
             az extension add -n containerapp --yes
             echo "Creating Blue Slot"
             az containerapp revision copy -n weather-api -g ${{ secrets.AZURE_RG }} -i ${{ steps.getacrserver.outputs.loginServer }}/weatherapi:${{ github.sha }}
+            az containerapp ingress traffic set -n weather-api -g ${{ secrets.AZURE_RG }} --revision-weight ${{ steps.getcurrentrevisionname.outputs.currentRevision }}=100
