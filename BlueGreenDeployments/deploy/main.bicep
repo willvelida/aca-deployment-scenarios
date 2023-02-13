@@ -14,7 +14,10 @@ param logAnalyticsWorkspaceName string = 'law-${applicationName}'
 param containerRegistryName string = 'acr${applicationName}'
 
 @description('The name of the container app that will be deployed')
-param containerAppName string = 'weather-api'
+param weatherApiName string = 'weather-api'
+
+@description('The name of the container app that will be deployed')
+param weatherFrontEndName string = 'weather-frontend'
 
 @description('The docker container image to deploy')
 param containerImage string = 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
@@ -29,7 +32,6 @@ param minReplica int = 1
 @maxValue(30)
 param maxReplica int = 30
 
-var acrPullRole = resourceId('Microsoft.Authorization/roleDefinitions', '7f951dda-4ed3-4680-a7ca-43fe172d538d')
 var tags = {
   DeploymentScenario: 'BlueGreen'
   Owner: 'Will Velida'
@@ -79,18 +81,8 @@ resource containerAppEnv 'Microsoft.App/managedEnvironments@2022-10-01' = {
   }
 }
 
-resource acrPullRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(containerRegistry.id, containerApp.id, acrPullRole)
-  scope: containerRegistry
-  properties: {
-    principalId: containerApp.identity.principalId
-    roleDefinitionId: acrPullRole
-    principalType: 'ServicePrincipal'
-  }
-}
-
-resource containerApp 'Microsoft.App/containerApps@2022-10-01' = {
-  name: containerAppName
+resource weatherapi 'Microsoft.App/containerApps@2022-10-01' = {
+  name: weatherApiName
   location: location
   tags: tags
   properties: {
@@ -119,7 +111,66 @@ resource containerApp 'Microsoft.App/containerApps@2022-10-01' = {
     template: {
       containers: [
         {
-          name: containerAppName
+          name: weatherApiName
+          image: containerImage
+          resources: {
+            cpu: json('0.25')
+            memory: '0.5Gi'
+          }
+        }
+      ]
+      scale: {
+        minReplicas: minReplica
+        maxReplicas: maxReplica
+        rules: [
+          {
+            name: 'http-requests'
+            http: {
+              metadata: {
+                concurrentRequests: '10'
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+  identity: {
+    type: 'SystemAssigned'
+  }
+}
+
+resource weatherFrontEnd 'Microsoft.App/containerApps@2022-10-01' = {
+  name: weatherFrontEndName
+  location: location
+  tags: tags
+  properties: {
+    managedEnvironmentId: containerAppEnv.id
+    configuration: {
+      ingress: {
+        external: true
+        targetPort: 80
+        allowInsecure: false
+      }
+      secrets: [
+        {
+          name: 'containerregistry-password'
+          value: containerRegistry.listCredentials().passwords[0].value
+        }
+      ]
+      registries: [
+        {
+          server: containerRegistry.properties.loginServer
+          passwordSecretRef: 'containerregistry-password'
+          username: containerRegistry.listCredentials().username
+        }
+      ]
+      activeRevisionsMode: 'Multiple'
+    }
+    template: {
+      containers: [
+        {
+          name: weatherFrontEndName
           image: containerImage
           resources: {
             cpu: json('0.25')
