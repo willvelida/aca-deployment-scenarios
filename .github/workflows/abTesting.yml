@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: './ABTesting/src/FrontEnd/FrontEnd'
+        working-directory: './ABTesting/src/WeatherFrontEnd/WeatherFrontEnd'
     steps:
       - name: 'Checkout GitHub Action'
         uses: actions/checkout@main
@@ -29,7 +29,7 @@ jobs:
     needs: [build-web-project]
     defaults:
       run:
-        working-directory: './ABTesting/src/FrontEnd'
+        working-directory: './ABTesting/src/WeatherFrontEnd'
     steps:
       - name: 'Checkout GitHub Action'
         uses: actions/checkout@main
@@ -37,18 +37,18 @@ jobs:
       - name: 'Login via Azure CLI'
         uses: azure/login@v1
         with:
-          creds: ${{ secrets.AB_AZURE_CREDENTIALS }}
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Get ACR name
         id: getacrname
         run: |
-          acrName=$(az acr list --resource-group ${{ secrets.AB_AZURE_RG }} --query "[0].name" -o tsv)
+          acrName=$(az acr list --resource-group ${{ secrets.AZURE_RG }} --query "[0].name" -o tsv)
           echo "::set-output name=acrName::$acrName"
 
       - name: Get ACR Credentials
         id: getacrcreds
         run: |
-          loginServer=$(az acr list --resource-group ${{ secrets.AB_AZURE_RG }} --query "[0].loginServer" -o tsv)
+          loginServer=$(az acr list --resource-group ${{ secrets.AZURE_RG }} --query "[0].loginServer" -o tsv)
           loginName=$(az acr credential show -n ${{ steps.getacrname.outputs.acrName }} --resource-group ${{ secrets.AZURE_RG }} --query username -o tsv)
           password=$(az acr credential show -n ${{ steps.getacrname.outputs.acrName }} --resource-group ${{ secrets.AZURE_RG }} --query "passwords[0].value" -o tsv)
           echo "::set-output name=loginServer::$loginServer"
@@ -78,12 +78,12 @@ jobs:
       - name: 'Login via Azure CLI'
         uses: azure/login@v1
         with:
-          creds: ${{ secrets.AB_AZURE_CREDENTIALS }}
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
           
       - name: Get ACR Login Server
         id: getacrserver
         run: |
-          loginServer=$(az acr list --resource-group ${{ secrets.AB_AZURE_RG }} --query "[0].loginServer" -o tsv)
+          loginServer=$(az acr list --resource-group ${{ secrets.AZURE_RG }} --query "[0].loginServer" -o tsv)
           echo "::set-output name=loginServer::$loginServer"
 
       - name: 'Deploy Container App'
@@ -93,4 +93,4 @@ jobs:
             echo "Installing containerapp extension"
             az extension add -n containerapp --yes
             echo "Starting Deploying"
-            az containerapp update -n frontend -g ${{ secrets.AB_AZURE_RG }} -i ${{ steps.getacrserver.outputs.loginServer }}/frontend:${{ github.sha }} --debug  
+            az containerapp update -n frontend -g ${{ secrets.AZURE_RG }} -i ${{ steps.getacrserver.outputs.loginServer }}/frontend:${{ github.sha }} --debug  
