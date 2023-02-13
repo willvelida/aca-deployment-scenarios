@@ -86,6 +86,14 @@ jobs:
           loginServer=$(az acr list --resource-group ${{ secrets.AZURE_RG }} --query "[0].loginServer" -o tsv)
           echo "::set-output name=loginServer::$loginServer"
 
+      - name: 'Get Last Revision Name'
+        id: getrevisionname
+        run: |
+          echo "Installing containerapp extension"
+          az extension add -n containerapp --yes
+          revisionName=$(az containerapp revision list -g ${{ secrets.AZURE_RG }} -n weather-frontend --query 'reverse(sort_by([].{Revision:name,Replicas:properties.replicas,Active:properties.active,Created:properties.createdTime,FQDN:properties.fqdn}[?Active!=`false`], &Created))| [0].Revision' -o tsv)
+          echo "::set-output name=revisionName::$revisionName"
+
       - name: 'Deploy Container App'
         uses: Azure/cli@v1
         with:
@@ -93,4 +101,5 @@ jobs:
             echo "Installing containerapp extension"
             az extension add -n containerapp --yes
             echo "Starting Deploying"
-            az containerapp update -n weather-frontend -g ${{ secrets.AZURE_RG }} -i ${{ steps.getacrserver.outputs.loginServer }}/frontend:${{ github.sha }} --debug  
+            az containerapp revision copy -n weather-frontend -g ${{ secrets.AZURE_RG }} -i ${{ steps.getacrserver.outputs.loginServer }}/frontend:${{ github.sha }}
+            az containerapp ingress traffic set -n weather-frontend -g ${{ secrets.AZURE_RG }} --revision-weight latest=50 ${{ steps.getrevisionname.outputs.revisionName }}=50
