@@ -70,7 +70,7 @@ jobs:
     needs: [build-container-image]
     defaults:
       run:
-        working-directory: './ABTesting/src/FrontEnd'
+        working-directory: './ABTesting/src/WeatherFrontEnd'
     steps:
       - name: 'Checkout GitHub Action'
         uses: actions/checkout@main
@@ -93,4 +93,4 @@ jobs:
             echo "Installing containerapp extension"
             az extension add -n containerapp --yes
             echo "Starting Deploying"
-            az containerapp update -n frontend -g ${{ secrets.AZURE_RG }} -i ${{ steps.getacrserver.outputs.loginServer }}/frontend:${{ github.sha }} --debug  
+            az containerapp update -n weather-frontend -g ${{ secrets.AZURE_RG }} -i ${{ steps.getacrserver.outputs.loginServer }}/frontend:${{ github.sha }} --debug  
