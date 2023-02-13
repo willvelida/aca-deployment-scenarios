@@ -83,7 +83,7 @@ jobs:
       - name: Get ACR Login Server
         id: getacrserver
         run: |
-          loginServer=$(az acr list --resource-group ${{ secrets.AZURE_RG }} --query "[0].loginServer" -o tsv)
+          loginServer=$(az acr list --resource-group ${{ secrets.AB_AZURE_RG }} --query "[0].loginServer" -o tsv)
           echo "::set-output name=loginServer::$loginServer"
 
       - name: 'Deploy Container App'
@@ -93,4 +93,4 @@ jobs:
             echo "Installing containerapp extension"
             az extension add -n containerapp --yes
             echo "Starting Deploying"
-            az containerapp update -n frontend -g ${{ secrets.AZURE_RG }} -i ${{ steps.getacrserver.outputs.loginServer }}/frontend:${{ github.sha }} --debug  
+            az containerapp update -n frontend -g ${{ secrets.AB_AZURE_RG }} -i ${{ steps.getacrserver.outputs.loginServer }}/frontend:${{ github.sha }} --debug  
